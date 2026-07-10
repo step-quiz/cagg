@@ -1,0 +1,872 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gestor d'imatges — #MathsToday</title>
+<style>
+  :root {
+    --bg:        #f5f5f7;
+    --surface:   #ffffff;
+    --surface-2: #fafafa;
+    --surface-3: #f0f0f3;
+    --text:      #1d1d1f;
+    --text-2:    #6e6e73;
+    --text-3:    #aeaeb2;
+    --accent:    #0071e3;
+    --accent-soft: rgba(0,113,227,.10);
+    --green:     #34c759;
+    --green-soft: rgba(52,199,89,.12);
+    --amber:     #ff9f0a;
+    --amber-soft: rgba(255,159,10,.12);
+    --red:       #ff3b30;
+    --red-soft:  rgba(255,59,48,.10);
+    --divider:   rgba(0,0,0,.08);
+    --divider-2: rgba(0,0,0,.04);
+    --radius:    14px;
+    --radius-sm: 8px;
+    --radius-xs: 5px;
+    --sh:        0 1px 2px rgba(0,0,0,.04), 0 2px 8px rgba(0,0,0,.05);
+    --sh-md:     0 4px 16px rgba(0,0,0,.07), 0 2px 6px rgba(0,0,0,.04);
+    --sh-lg:     0 24px 64px rgba(0,0,0,.28);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    min-height: 100%;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    -webkit-font-smoothing: antialiased;
+    font-size: 14px;
+    line-height: 1.45;
+  }
+
+  button { font: inherit; color: inherit; background: none; border: none; cursor: pointer; }
+  input, select, textarea { font: inherit; color: inherit; }
+  a { color: var(--accent); }
+  img { display: block; }
+
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  /* ── Topbar ─────────────────────────────────────────────────────── */
+  .topbar {
+    position: sticky; top: 0; z-index: 30;
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    padding: 11px 22px;
+    background: rgba(255,255,255,.92);
+    backdrop-filter: saturate(180%) blur(20px);
+    -webkit-backdrop-filter: saturate(180%) blur(20px);
+    border-bottom: 1px solid var(--divider);
+  }
+  .topbar-title { display: flex; align-items: baseline; gap: 10px; }
+  .topbar h1 { font-size: 15px; font-weight: 700; letter-spacing: -.01em; white-space: nowrap; }
+  .topbar h1 .h-sub { color: var(--accent); font-weight: 600; }
+  .topbar .count { font-size: 12px; color: var(--text-2); white-space: nowrap; }
+  .spacer { flex: 1; }
+
+  .search-wrap { position: relative; }
+  #search {
+    width: 240px; padding: 7px 12px 7px 30px; border-radius: 980px;
+    border: 1px solid var(--divider); background: var(--surface-3);
+    font-size: 12.5px;
+  }
+  #search:focus { background: var(--surface); border-color: var(--accent); }
+  .search-wrap::before {
+    content: ''; position: absolute; left: 11px; top: 50%; translate: 0 -50%;
+    width: 11px; height: 11px; border: 1.6px solid var(--text-3); border-radius: 50%;
+    pointer-events: none;
+  }
+  .search-wrap::after {
+    content: ''; position: absolute; left: 20px; top: 62%; width: 5px; height: 1.6px;
+    background: var(--text-3); rotate: 45deg; pointer-events: none;
+  }
+
+  .select-sm {
+    padding: 7px 10px; border-radius: 980px; border: 1px solid var(--divider);
+    background: var(--surface-3); font-size: 12.5px; color: var(--text-2);
+  }
+
+  .btn {
+    padding: 7px 14px; border-radius: 980px; font-size: 12.5px; font-weight: 600;
+    transition: background .12s, color .12s, box-shadow .12s;
+    display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;
+  }
+  .btn-prim  { background: var(--accent); color: #fff; box-shadow: var(--sh); }
+  .btn-prim:hover  { background: #0064cc; }
+  .btn-ghost { background: var(--surface-3); color: var(--text-2); }
+  .btn-ghost:hover { background: var(--divider); color: var(--text); }
+  .btn-danger { background: var(--red-soft); color: var(--red); }
+  .btn-danger:hover { background: var(--red); color: #fff; }
+  .btn-sm { padding: 5px 11px; font-size: 11.5px; }
+  .btn[disabled] { opacity: .4; cursor: default; pointer-events: none; }
+
+  /* ── Layout ─────────────────────────────────────────────────────── */
+  .container { max-width: 1240px; margin: 0 auto; padding: 18px 22px 80px; }
+
+  .panel {
+    background: var(--surface); border-radius: var(--radius); box-shadow: var(--sh);
+    margin-bottom: 14px;
+  }
+  .panel > summary {
+    list-style: none; cursor: pointer; display: flex; align-items: center; gap: 10px;
+    padding: 13px 18px; user-select: none;
+  }
+  .panel > summary::-webkit-details-marker { display: none; }
+  .panel > summary::before {
+    content: '▸'; color: var(--text-3); font-size: 11px; transition: rotate .15s;
+  }
+  .panel[open] > summary::before { rotate: 90deg; }
+  .panel > summary h2 { font-size: 13px; font-weight: 700; letter-spacing: -.01em; flex: 1; }
+  .panel-body { padding: 4px 18px 16px; }
+
+  .filter-row { display: flex; align-items: center; gap: 14px; padding: 8px 0; flex-wrap: wrap; }
+  .filter-row + .filter-row { border-top: 1px solid var(--divider-2); }
+  .filter-label { font-size: 12px; font-weight: 600; color: var(--text-2); width: 68px; flex-shrink: 0; }
+
+  .seg { display: inline-flex; background: var(--surface-3); border-radius: 980px; padding: 2px; gap: 2px; }
+  .seg-btn { padding: 5px 12px; border-radius: 980px; font-size: 12px; font-weight: 600; color: var(--text-2); }
+  .seg-btn.active { background: var(--surface); color: var(--text); box-shadow: var(--sh); }
+
+  .chip-cloud { display: flex; flex-wrap: wrap; gap: 6px; flex: 1; }
+  .chip-cloud .hint { font-size: 12px; color: var(--text-3); font-style: italic; }
+  .tag-btn {
+    padding: 4px 11px; border-radius: 980px; font-size: 11.5px; font-weight: 600;
+    background: var(--surface-3); color: var(--text-2); border: 1px solid transparent;
+  }
+  .tag-btn:hover { background: var(--divider); }
+  .tag-btn.active { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
+
+  /* ── Bulk bar ───────────────────────────────────────────────────── */
+  .bulk-bar {
+    align-items: center; gap: 10px; flex-wrap: wrap;
+    background: var(--text); color: #fff; border-radius: var(--radius);
+    padding: 10px 16px; margin-bottom: 14px; box-shadow: var(--sh-md);
+  }
+  .bulk-bar:not([hidden]) { display: flex; }
+  .bulk-bar strong { font-size: 12.5px; white-space: nowrap; }
+  .bulk-bar input[type=text] {
+    padding: 6px 10px; border-radius: var(--radius-sm); border: none;
+    background: rgba(255,255,255,.15); color: #fff; font-size: 12px; width: 150px;
+  }
+  .bulk-bar input[type=text]::placeholder { color: rgba(255,255,255,.55); }
+  .bulk-bar select {
+    padding: 6px 10px; border-radius: var(--radius-sm); border: none;
+    background: rgba(255,255,255,.15); color: #fff; font-size: 12px;
+  }
+  .bulk-bar select option { color: #111; }
+  .bulk-bar .btn-ghost { background: rgba(255,255,255,.15); color: #fff; }
+  .bulk-bar .btn-ghost:hover { background: rgba(255,255,255,.28); }
+  .bulk-bar .bb-spacer { flex: 1; }
+
+  /* ── Grid ───────────────────────────────────────────────────────── */
+  .grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+    gap: 14px;
+  }
+  .card {
+    background: var(--surface); border-radius: var(--radius); overflow: hidden;
+    box-shadow: var(--sh); cursor: pointer; position: relative;
+    transition: box-shadow .15s, translate .15s;
+  }
+  .card:hover { box-shadow: var(--sh-md); translate: 0 -2px; }
+  .card-thumb { position: relative; aspect-ratio: 4 / 3; background: var(--surface-3); overflow: hidden; }
+  .card-thumb img { width: 100%; height: 100%; object-fit: cover; transition: filter .15s, opacity .15s; }
+  .card.is-discarded .card-thumb img { filter: grayscale(85%); opacity: .5; }
+  .card-check {
+    position: absolute; top: 8px; right: 8px; z-index: 2;
+    width: 22px; height: 22px; border-radius: 6px;
+    background: rgba(255,255,255,.85); backdrop-filter: blur(6px);
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: var(--sh);
+  }
+  .card-check input { width: 15px; height: 15px; accent-color: var(--accent); cursor: pointer; }
+  .card-status {
+    position: absolute; top: 10px; left: 10px; z-index: 2;
+    width: 9px; height: 9px; border-radius: 50%; box-shadow: 0 0 0 2px rgba(255,255,255,.85);
+  }
+  .status-pending .card-status  { background: var(--text-3); }
+  .status-kept .card-status     { background: var(--green); }
+  .status-discarded .card-status{ background: var(--red); }
+  .card-body { padding: 9px 11px 11px; }
+  .card-meta { font-size: 10.5px; color: var(--text-3); margin-bottom: 4px; display: flex; justify-content: space-between; }
+  .card-text { font-size: 12px; color: var(--text); line-height: 1.35; min-height: 2.6em; }
+  .card-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 7px; }
+  .card-tags .chip { font-size: 10px; padding: 2px 7px; border-radius: 980px; background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+
+  .empty-state { text-align: center; padding: 60px 20px; color: var(--text-2); }
+  .empty-state p { margin-bottom: 14px; font-size: 13px; }
+
+  .fatal { max-width: 560px; margin: 60px auto; padding: 26px 28px; background: var(--surface);
+    border-radius: var(--radius); box-shadow: var(--sh-md); }
+  .fatal h2 { font-size: 15px; margin-bottom: 10px; }
+  .fatal p { font-size: 13px; color: var(--text-2); line-height: 1.6; margin-bottom: 8px; }
+  .fatal code { background: var(--surface-3); padding: 1px 6px; border-radius: 5px; font-size: 12px; }
+
+  /* ── Overlay / detail ───────────────────────────────────────────── */
+  .overlay {
+    position: fixed; inset: 0; z-index: 100; background: rgba(20,20,22,.72);
+    backdrop-filter: blur(4px); align-items: center; justify-content: center;
+    padding: 30px;
+  }
+  .overlay:not([hidden]) { display: flex; }
+  .overlay-inner {
+    width: 100%; max-width: 1080px; height: 100%; max-height: 760px;
+    background: var(--surface); border-radius: 18px; box-shadow: var(--sh-lg);
+    display: flex; overflow: hidden; position: relative;
+  }
+  .ov-image { flex: 1.3; background: #111; display: flex; align-items: center; justify-content: center; min-width: 0; }
+  .ov-image img { max-width: 100%; max-height: 100%; object-fit: contain; }
+  .ov-panel { flex: 1; min-width: 320px; max-width: 380px; display: flex; flex-direction: column; overflow-y: auto; }
+  .ov-close, .ov-nav {
+    position: absolute; z-index: 5; width: 34px; height: 34px; border-radius: 50%;
+    background: rgba(255,255,255,.92); box-shadow: var(--sh-md);
+    display: flex; align-items: center; justify-content: center; font-size: 18px; color: var(--text);
+  }
+  .ov-close:hover, .ov-nav:hover { background: #fff; }
+  .ov-close { top: 14px; right: 14px; }
+  .ov-prev { top: 50%; left: 14px; translate: 0 -50%; }
+  .ov-next { top: 50%; right: calc(380px + 14px); translate: 0 -50%; }
+  .ov-section { padding: 16px 20px; border-bottom: 1px solid var(--divider-2); }
+  .ov-section:last-child { border-bottom: none; margin-top: auto; }
+  .ov-label { font-size: 11px; font-weight: 700; color: var(--text-3); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 6px; }
+  .ov-text { font-size: 13px; line-height: 1.55; white-space: pre-wrap; }
+  .ov-alt { font-size: 12.5px; line-height: 1.5; color: var(--text-2); white-space: pre-wrap; }
+  .ov-stats { display: flex; gap: 14px; font-size: 12px; color: var(--text-2); }
+  .ov-link { font-size: 12px; }
+  .ov-select-row { display: flex; align-items: center; gap: 10px; }
+  .ov-select-row label { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--text-2); }
+  .ov-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+  .chip.removable { display: inline-flex; align-items: center; gap: 4px; background: var(--accent-soft); color: var(--accent);
+    padding: 3px 6px 3px 10px; border-radius: 980px; font-size: 11.5px; font-weight: 600; }
+  .chip.removable button { color: var(--accent); font-size: 13px; line-height: 1; padding: 0 2px; }
+  .ov-tag-input {
+    width: 100%; padding: 7px 10px; border-radius: var(--radius-sm); border: 1px solid var(--divider);
+    background: var(--surface-2); font-size: 12.5px;
+  }
+  .ov-note {
+    width: 100%; min-height: 64px; padding: 8px 10px; border-radius: var(--radius-sm);
+    border: 1px solid var(--divider); background: var(--surface-2); font-size: 12.5px; resize: vertical;
+  }
+  .pos-indicator { font-size: 11px; color: var(--text-3); margin-top: 2px; }
+
+  /* ── Toasts ─────────────────────────────────────────────────────── */
+  .toasts { position: fixed; bottom: 22px; left: 50%; translate: -50% 0; z-index: 200; display: flex; flex-direction: column; gap: 8px; align-items: center; }
+  .toast {
+    background: var(--text); color: #fff; padding: 9px 16px; border-radius: 980px;
+    font-size: 12.5px; box-shadow: var(--sh-md); opacity: 0; translate: 0 8px;
+    transition: opacity .2s, translate .2s;
+  }
+  .toast.show { opacity: 1; translate: 0 0; }
+
+  @media (max-width: 760px) {
+    .ov-image { display: none; }
+    .ov-panel { max-width: none; }
+    .ov-next { right: 14px; }
+    #search { width: 150px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; }
+  }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-title">
+    <h1>Gestor d'imatges <span class="h-sub">#MathsToday</span></h1>
+    <div class="count" id="count">carregant…</div>
+  </div>
+  <div class="spacer"></div>
+  <div class="search-wrap">
+    <input type="search" id="search" placeholder="Cerca en el text o la descripció…">
+  </div>
+  <select id="sort" class="select-sm">
+    <option value="date-desc">Més recents</option>
+    <option value="date-asc">Més antigues</option>
+    <option value="likes-desc">Més m'agrada</option>
+    <option value="likes-asc">Menys m'agrada</option>
+  </select>
+  <button class="btn btn-ghost" id="btn-import">Importa catàleg</button>
+  <input type="file" id="import-input" accept="application/json,.json" hidden>
+  <button class="btn btn-prim" id="btn-download">Baixa catàleg</button>
+</header>
+
+<div class="container" id="app" hidden>
+
+  <details class="panel" open>
+    <summary><h2>Filtres</h2></summary>
+    <div class="panel-body">
+      <div class="filter-row">
+        <span class="filter-label">Estat</span>
+        <div class="seg" id="status-filter">
+          <button data-value="all" class="seg-btn active">Totes</button>
+          <button data-value="pending" class="seg-btn">Pendents</button>
+          <button data-value="kept" class="seg-btn">Guardades</button>
+          <button data-value="discarded" class="seg-btn">Descartades</button>
+        </div>
+      </div>
+      <div class="filter-row">
+        <span class="filter-label">Etiquetes</span>
+        <div class="chip-cloud" id="tag-cloud"><span class="hint">Encara no hi ha etiquetes.</span></div>
+      </div>
+    </div>
+  </details>
+
+  <div class="bulk-bar" id="bulk-bar" hidden>
+    <strong id="bulk-count">0 seleccionades</strong>
+    <input type="text" id="bulk-tag-input" placeholder="afegeix etiqueta…">
+    <button class="btn btn-ghost btn-sm" id="bulk-tag-apply">Aplica</button>
+    <select id="bulk-status">
+      <option value="pending">Pendent</option>
+      <option value="kept">Guardada</option>
+      <option value="discarded">Descartada</option>
+    </select>
+    <button class="btn btn-ghost btn-sm" id="bulk-status-apply">Canvia l'estat</button>
+    <div class="bb-spacer"></div>
+    <button class="btn btn-ghost btn-sm" id="bulk-zip">Baixa .zip</button>
+    <button class="btn btn-ghost btn-sm" id="bulk-clear">Buida la selecció</button>
+  </div>
+
+  <div id="grid" class="grid"></div>
+  <div id="empty" class="empty-state" hidden>
+    <p>Cap imatge coincideix amb els filtres actuals.</p>
+    <button class="btn btn-ghost" id="btn-reset-filters">Neteja els filtres</button>
+  </div>
+</div>
+
+<div id="fatal-wrap"></div>
+
+<div class="overlay" id="overlay" hidden>
+  <div class="overlay-inner">
+    <button class="ov-close" id="ov-close" aria-label="Tanca">×</button>
+    <button class="ov-nav ov-prev" id="ov-prev" aria-label="Anterior">‹</button>
+    <button class="ov-nav ov-next" id="ov-next" aria-label="Següent">›</button>
+    <div class="ov-image"><img id="ov-img" src="" alt=""></div>
+    <div class="ov-panel" id="ov-panel"></div>
+  </div>
+</div>
+
+<div id="toasts" class="toasts"></div>
+
+<script src="lib/jszip.min.js"></script>
+<script>
+'use strict';
+
+/* ─── Utilitats ────────────────────────────────────────────────── */
+const $ = id => document.getElementById(id);
+
+function escHtml(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+  }[c]));
+}
+
+function normalize(s) {
+  if (!s) return '';
+  return String(s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+}
+
+function snippet(text, n = 96) {
+  const t = String(text || '').replace(/\s+/g, ' ').trim();
+  return t.length > n ? t.slice(0, n - 1) + '…' : (t || '(sense text)');
+}
+
+function formatDate(iso) {
+  try {
+    return new Date(iso).toLocaleDateString('ca-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  } catch (e) { return iso || ''; }
+}
+
+function toast(msg) {
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.textContent = msg;
+  $('toasts').appendChild(el);
+  requestAnimationFrame(() => el.classList.add('show'));
+  setTimeout(() => {
+    el.classList.remove('show');
+    setTimeout(() => el.remove(), 250);
+  }, 2200);
+}
+
+function triggerDownload(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+}
+
+/* ─── Estat ────────────────────────────────────────────────────── */
+const LS_KEY = 'mathstoday-gestor-v1';
+
+const state = {
+  images: [],           // llista plana d'imatges (una per fitxer)
+  meta: {},             // { [file]: {tags, note, status, selected} }
+  filters: { query: '', status: 'all', tags: new Set(), sort: 'date-desc' },
+  detail: null,          // { list: [file,...], pos }
+};
+
+function emptyMeta() { return { tags: [], note: '', status: 'pending', selected: false }; }
+
+function getMeta(file) {
+  if (!state.meta[file]) state.meta[file] = emptyMeta();
+  return state.meta[file];
+}
+
+function saveMeta() {
+  try { localStorage.setItem(LS_KEY, JSON.stringify(state.meta)); }
+  catch (e) { toast('No s\'ha pogut desar (emmagatzematge ple?)'); }
+}
+
+let saveTimer = null;
+function saveMetaDebounced() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(saveMeta, 350);
+}
+
+function mutateMeta(file, fn) {
+  const m = getMeta(file);
+  fn(m);
+  saveMeta();
+  render();
+  if (state.detail && state.detail.list[state.detail.pos] === file) renderDetail();
+}
+
+/* ─── Càrrega de dades ─────────────────────────────────────────── */
+async function loadImages() {
+  const resp = await fetch('publicacions.json');
+  if (!resp.ok) throw new Error('http-' + resp.status);
+  const posts = await resp.json();
+  const images = [];
+  for (const p of posts) {
+    const imatges = Array.isArray(p.imatges) ? p.imatges : [];
+    imatges.forEach((img, idx) => {
+      images.push({
+        file: img.fitxer_local,
+        alt: img.alt || '',
+        urlOriginal: img.url_original || '',
+        postText: p.text || '',
+        postDate: p.data || '',
+        likes: p.likes || 0,
+        reposts: p.reposts || 0,
+        respostes: p.respostes || 0,
+        urlWeb: p.url_web || '',
+        postUri: p.uri || '',
+        indexInPost: idx,
+        totalInPost: imatges.length,
+      });
+    });
+  }
+  return images;
+}
+
+function loadMetaFromStorage() {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    state.meta = raw ? JSON.parse(raw) : {};
+  } catch (e) { state.meta = {}; }
+}
+
+/* ─── Filtrat i ordenació ──────────────────────────────────────── */
+function getFiltered() {
+  let list = state.images;
+  const q = normalize(state.filters.query);
+  if (q) {
+    list = list.filter(im => normalize(im.postText + ' ' + im.alt).includes(q));
+  }
+  if (state.filters.status !== 'all') {
+    list = list.filter(im => getMeta(im.file).status === state.filters.status);
+  }
+  if (state.filters.tags.size) {
+    list = list.filter(im => getMeta(im.file).tags.some(t => state.filters.tags.has(t)));
+  }
+  list = list.slice().sort((a, b) => {
+    switch (state.filters.sort) {
+      case 'date-asc':   return new Date(a.postDate) - new Date(b.postDate);
+      case 'likes-desc': return b.likes - a.likes;
+      case 'likes-asc':  return a.likes - b.likes;
+      default:           return new Date(b.postDate) - new Date(a.postDate); // date-desc
+    }
+  });
+  return list;
+}
+
+function allTagsUsed() {
+  const set = new Set();
+  Object.values(state.meta).forEach(m => (m.tags || []).forEach(t => set.add(t)));
+  return Array.from(set).sort((a, b) => a.localeCompare(b, 'ca'));
+}
+
+/* ─── Render: contador ─────────────────────────────────────────── */
+function updateCounter(filteredLen) {
+  $('count').textContent = `${filteredLen} de ${state.images.length} imatges`;
+}
+
+/* ─── Render: núvol d'etiquetes ────────────────────────────────── */
+function renderTagCloud() {
+  const cloud = $('tag-cloud');
+  const tags = allTagsUsed();
+  if (!tags.length) {
+    cloud.innerHTML = '<span class="hint">Encara no hi ha etiquetes. Afegeix-ne una des del detall d\'una imatge.</span>';
+    return;
+  }
+  cloud.innerHTML = tags.map(t => `
+    <button class="tag-btn${state.filters.tags.has(t) ? ' active' : ''}" data-tag="${escHtml(t)}">${escHtml(t)}</button>
+  `).join('');
+}
+
+/* ─── Render: graella ──────────────────────────────────────────── */
+function renderGrid() {
+  const filtered = getFiltered();
+  updateCounter(filtered.length);
+
+  const grid = $('grid');
+  const empty = $('empty');
+
+  if (!filtered.length) {
+    grid.innerHTML = '';
+    empty.hidden = false;
+    return;
+  }
+  empty.hidden = true;
+
+  grid.innerHTML = filtered.map(im => {
+    const m = getMeta(im.file);
+    return `
+    <div class="card status-${m.status}${m.status === 'discarded' ? ' is-discarded' : ''}" data-file="${escHtml(im.file)}">
+      <div class="card-thumb">
+        <span class="card-status" title="${statusLabel(m.status)}"></span>
+        <label class="card-check">
+          <input type="checkbox" ${m.selected ? 'checked' : ''} aria-label="Selecciona">
+        </label>
+        <img loading="lazy" src="media/${encodeURIComponent(im.file)}" alt="${escHtml(snippet(im.alt, 120))}">
+      </div>
+      <div class="card-body">
+        <div class="card-meta"><span>${formatDate(im.postDate)}</span><span>❤ ${im.likes}</span></div>
+        <div class="card-text">${escHtml(snippet(im.postText))}</div>
+        ${m.tags.length ? `<div class="card-tags">${m.tags.map(t => `<span class="chip">${escHtml(t)}</span>`).join('')}</div>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function statusLabel(s) {
+  return s === 'kept' ? 'Guardada' : s === 'discarded' ? 'Descartada' : 'Pendent';
+}
+
+/* ─── Render: barra d'accions massives ─────────────────────────── */
+function renderBulkBar() {
+  const selected = state.images.filter(im => getMeta(im.file).selected);
+  const bar = $('bulk-bar');
+  if (!selected.length) { bar.hidden = true; return; }
+  bar.hidden = false;
+  $('bulk-count').textContent = `${selected.length} seleccionad${selected.length === 1 ? 'a' : 'es'}`;
+}
+
+/* ─── Render general ───────────────────────────────────────────── */
+function render() {
+  renderTagCloud();
+  renderGrid();
+  renderBulkBar();
+}
+
+/* ─── Detall / lightbox ────────────────────────────────────────── */
+function openDetail(file) {
+  const filtered = getFiltered();
+  const files = filtered.map(im => im.file);
+  let pos = files.indexOf(file);
+  if (pos < 0) pos = 0;
+  state.detail = { list: files, pos };
+  renderDetail();
+  $('overlay').hidden = false;
+  document.body.style.overflow = 'hidden';
+}
+
+function closeDetail() {
+  $('overlay').hidden = true;
+  document.body.style.overflow = '';
+  state.detail = null;
+}
+
+function detailStep(delta) {
+  if (!state.detail) return;
+  const len = state.detail.list.length;
+  state.detail.pos = (state.detail.pos + delta + len) % len;
+  renderDetail();
+}
+
+function renderDetail() {
+  if (!state.detail) return;
+  const file = state.detail.list[state.detail.pos];
+  const im = state.images.find(x => x.file === file);
+  if (!im) return;
+  const m = getMeta(file);
+
+  $('ov-img').src = 'media/' + encodeURIComponent(file);
+  $('ov-img').alt = im.alt || '';
+
+  $('ov-panel').innerHTML = `
+    <div class="ov-section">
+      <div class="ov-label">Publicació</div>
+      <div class="ov-text">${escHtml(im.postText) || '<span style="color:var(--text-3)">(sense text)</span>'}</div>
+      <div class="pos-indicator">${formatDate(im.postDate)}${im.totalInPost > 1 ? ` · imatge ${im.indexInPost + 1} de ${im.totalInPost}` : ''} · imatge ${state.detail.pos + 1} de ${state.detail.list.length} filtrades</div>
+    </div>
+    ${im.alt ? `<div class="ov-section"><div class="ov-label">Descripció (alt)</div><div class="ov-alt">${escHtml(im.alt)}</div></div>` : ''}
+    <div class="ov-section">
+      <div class="ov-stats">
+        <span>❤ ${im.likes}</span><span>🔁 ${im.reposts}</span><span>💬 ${im.respostes}</span>
+      </div>
+      ${im.urlWeb ? `<div class="ov-link" style="margin-top:6px"><a href="${escHtml(im.urlWeb)}" target="_blank" rel="noopener">Veure l'original a Bluesky ↗</a></div>` : ''}
+    </div>
+    <div class="ov-section">
+      <div class="ov-label">Estat</div>
+      <div class="seg" id="detail-status">
+        <button data-value="pending" class="seg-btn${m.status === 'pending' ? ' active' : ''}">Pendent</button>
+        <button data-value="kept" class="seg-btn${m.status === 'kept' ? ' active' : ''}">Guardada</button>
+        <button data-value="discarded" class="seg-btn${m.status === 'discarded' ? ' active' : ''}">Descartada</button>
+      </div>
+      <div class="ov-select-row" style="margin-top:10px">
+        <label><input type="checkbox" id="detail-selected" ${m.selected ? 'checked' : ''}> Inclou-la a la selecció</label>
+      </div>
+    </div>
+    <div class="ov-section">
+      <div class="ov-label">Etiquetes</div>
+      <div class="ov-tags" id="detail-tags">
+        ${m.tags.map(t => `<span class="chip removable" data-tag="${escHtml(t)}">${escHtml(t)}<button data-role="remove-tag" aria-label="Elimina l'etiqueta">×</button></span>`).join('')}
+      </div>
+      <input type="text" class="ov-tag-input" id="detail-tag-input" placeholder="Afegeix una etiqueta i prem Retorn">
+    </div>
+    <div class="ov-section">
+      <div class="ov-label">Nota</div>
+      <textarea class="ov-note" id="detail-note" placeholder="Comentari propi…">${escHtml(m.note)}</textarea>
+    </div>
+  `;
+
+  $('detail-status').addEventListener('click', e => {
+    const btn = e.target.closest('.seg-btn');
+    if (!btn) return;
+    mutateMeta(file, mm => { mm.status = btn.dataset.value; });
+  });
+  $('detail-selected').addEventListener('change', e => {
+    mutateMeta(file, mm => { mm.selected = e.target.checked; });
+  });
+  $('detail-tags').addEventListener('click', e => {
+    const btn = e.target.closest('[data-role="remove-tag"]');
+    if (!btn) return;
+    const tag = btn.parentElement.dataset.tag;
+    mutateMeta(file, mm => { mm.tags = mm.tags.filter(t => t !== tag); });
+  });
+  $('detail-tag-input').addEventListener('keydown', e => {
+    if (e.key !== 'Enter') return;
+    const val = e.target.value.trim();
+    e.target.value = '';
+    if (!val) return;
+    mutateMeta(file, mm => {
+      if (!mm.tags.some(t => normalize(t) === normalize(val))) mm.tags.push(val);
+    });
+  });
+  $('detail-note').addEventListener('input', e => {
+    getMeta(file).note = e.target.value;
+    saveMetaDebounced();
+  });
+}
+
+/* ─── Exportació / importació ──────────────────────────────────── */
+function catalogRow(im) {
+  const m = getMeta(im.file);
+  return {
+    file: im.file, alt: im.alt, postText: im.postText, postDate: im.postDate,
+    likes: im.likes, reposts: im.reposts, respostes: im.respostes, urlWeb: im.urlWeb,
+    tags: m.tags, note: m.note, status: m.status, selected: m.selected,
+  };
+}
+
+function downloadCatalog() {
+  const data = { generat: new Date().toISOString().slice(0, 10), imatges: state.images.map(catalogRow) };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  triggerDownload(blob, 'cataleg-mathstoday.json');
+  toast('Catàleg descarregat');
+}
+
+function importCatalog(file) {
+  const reader = new FileReader();
+  reader.onload = () => {
+    let count = 0;
+    try {
+      const data = JSON.parse(reader.result);
+      const list = Array.isArray(data) ? data : data.imatges;
+      if (!Array.isArray(list)) throw new Error('format');
+      for (const row of list) {
+        if (!row || !row.file) continue;
+        state.meta[row.file] = {
+          tags: Array.isArray(row.tags) ? row.tags : [],
+          note: typeof row.note === 'string' ? row.note : '',
+          status: ['pending', 'kept', 'discarded'].includes(row.status) ? row.status : 'pending',
+          selected: !!row.selected,
+        };
+        count++;
+      }
+      saveMeta();
+      render();
+      toast(`Catàleg importat (${count} imatges)`);
+    } catch (e) {
+      toast('El fitxer no és un catàleg vàlid');
+    }
+  };
+  reader.readAsText(file);
+}
+
+async function downloadSelectionZip() {
+  const selected = state.images.filter(im => getMeta(im.file).selected);
+  if (!selected.length) { toast('No hi ha cap imatge seleccionada'); return; }
+  if (typeof JSZip === 'undefined') { toast('No s\'ha pogut carregar JSZip'); return; }
+  toast(`Preparant .zip amb ${selected.length} imatges…`);
+  try {
+    const zip = new JSZip();
+    const rows = [];
+    for (const im of selected) {
+      const resp = await fetch('media/' + encodeURIComponent(im.file));
+      if (!resp.ok) continue;
+      const blob = await resp.blob();
+      zip.file('media/' + im.file, blob);
+      rows.push(catalogRow(im));
+    }
+    zip.file('seleccio.json', JSON.stringify(rows, null, 2));
+    const content = await zip.generateAsync({ type: 'blob' });
+    triggerDownload(content, 'seleccio-mathstoday.zip');
+    toast('.zip descarregat');
+  } catch (e) {
+    toast('Hi ha hagut un error preparant el .zip');
+  }
+}
+
+/* ─── Vinculació d'esdeveniments ───────────────────────────────── */
+function bindEvents() {
+  $('search').addEventListener('input', e => {
+    state.filters.query = e.target.value;
+    render();
+  });
+
+  $('sort').addEventListener('change', e => {
+    state.filters.sort = e.target.value;
+    render();
+  });
+
+  $('status-filter').addEventListener('click', e => {
+    const btn = e.target.closest('.seg-btn');
+    if (!btn) return;
+    state.filters.status = btn.dataset.value;
+    $('status-filter').querySelectorAll('.seg-btn').forEach(b => b.classList.toggle('active', b === btn));
+    render();
+  });
+
+  $('tag-cloud').addEventListener('click', e => {
+    const btn = e.target.closest('.tag-btn');
+    if (!btn) return;
+    const tag = btn.dataset.tag;
+    if (state.filters.tags.has(tag)) state.filters.tags.delete(tag);
+    else state.filters.tags.add(tag);
+    render();
+  });
+
+  $('grid').addEventListener('click', e => {
+    const card = e.target.closest('.card');
+    if (!card) return;
+    const file = card.dataset.file;
+    const input = e.target.closest('input[type="checkbox"]');
+    if (input) {
+      mutateMeta(file, m => { m.selected = input.checked; });
+      return;
+    }
+    openDetail(file);
+  });
+
+  $('btn-reset-filters').addEventListener('click', () => {
+    state.filters = { query: '', status: 'all', tags: new Set(), sort: state.filters.sort };
+    $('search').value = '';
+    $('status-filter').querySelectorAll('.seg-btn').forEach(b => b.classList.toggle('active', b.dataset.value === 'all'));
+    render();
+  });
+
+  $('ov-close').addEventListener('click', closeDetail);
+  $('ov-prev').addEventListener('click', () => detailStep(-1));
+  $('ov-next').addEventListener('click', () => detailStep(1));
+  $('overlay').addEventListener('click', e => { if (e.target.id === 'overlay') closeDetail(); });
+  document.addEventListener('keydown', e => {
+    if ($('overlay').hidden) return;
+    if (e.key === 'Escape') closeDetail();
+    else if (e.key === 'ArrowLeft') detailStep(-1);
+    else if (e.key === 'ArrowRight') detailStep(1);
+  });
+
+  $('btn-download').addEventListener('click', downloadCatalog);
+  $('btn-import').addEventListener('click', () => $('import-input').click());
+  $('import-input').addEventListener('change', e => {
+    const file = e.target.files[0];
+    if (file) importCatalog(file);
+    e.target.value = '';
+  });
+
+  $('bulk-tag-apply').addEventListener('click', () => {
+    const val = $('bulk-tag-input').value.trim();
+    if (!val) return;
+    $('bulk-tag-input').value = '';
+    state.images.filter(im => getMeta(im.file).selected).forEach(im => {
+      const m = getMeta(im.file);
+      if (!m.tags.some(t => normalize(t) === normalize(val))) m.tags.push(val);
+    });
+    saveMeta();
+    render();
+    toast('Etiqueta aplicada a la selecció');
+  });
+
+  $('bulk-status-apply').addEventListener('click', () => {
+    const status = $('bulk-status').value;
+    state.images.filter(im => getMeta(im.file).selected).forEach(im => { getMeta(im.file).status = status; });
+    saveMeta();
+    render();
+    toast('Estat actualitzat');
+  });
+
+  $('bulk-clear').addEventListener('click', () => {
+    state.images.forEach(im => { if (state.meta[im.file]) state.meta[im.file].selected = false; });
+    saveMeta();
+    render();
+  });
+
+  $('bulk-zip').addEventListener('click', downloadSelectionZip);
+}
+
+/* ─── Inicialització ───────────────────────────────────────────── */
+function showFatal() {
+  $('fatal-wrap').innerHTML = `
+    <div class="fatal">
+      <h2>No s'han pogut carregar les dades</h2>
+      <p>Aquesta eina llegeix <code>publicacions.json</code> amb <code>fetch()</code>, així que
+      cal servir la carpeta per HTTP(S) — no funciona obrint el fitxer directament (<code>file://</code>).</p>
+      <p>Des d'un terminal, dins la carpeta <code>bluesky_mathstoday/</code>:</p>
+      <p><code>python3 -m http.server 8000</code></p>
+      <p>i després obre <code>http://localhost:8000/gestiona-imatges.html</code>.</p>
+    </div>`;
+}
+
+async function init() {
+  try {
+    state.images = await loadImages();
+  } catch (e) {
+    showFatal();
+    return;
+  }
+  loadMetaFromStorage();
+  bindEvents();
+  render();
+  $('app').hidden = false;
+}
+
+init();
+</script>
+</body>
+</html>
