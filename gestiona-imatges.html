@@ -131,6 +131,14 @@
 
   .chip-cloud { display: flex; flex-wrap: wrap; gap: 6px; flex: 1; }
   .chip-cloud .hint { font-size: 12px; color: var(--text-3); font-style: italic; }
+
+  .tag-groups { display: flex; flex-direction: column; gap: 4px; }
+  .tag-group { display: flex; align-items: flex-start; gap: 14px; padding: 9px 0; }
+  .tag-group + .tag-group { border-top: 1px solid var(--divider-2); }
+  .tag-group-label {
+    font-size: 11px; font-weight: 700; color: var(--text-3); text-transform: uppercase;
+    letter-spacing: .04em; width: 68px; flex-shrink: 0; padding-top: 4px;
+  }
   .tag-btn {
     padding: 4px 11px; border-radius: 980px; font-size: 11.5px; font-weight: 600;
     background: var(--surface-3); color: var(--text-2); border: 1px solid transparent;
@@ -294,21 +302,9 @@
 <div class="container" id="app" hidden>
 
   <details class="panel" open>
-    <summary><h2>Filtres</h2></summary>
+    <summary><h2>Etiquetes</h2></summary>
     <div class="panel-body">
-      <div class="filter-row">
-        <span class="filter-label">Estat</span>
-        <div class="seg" id="status-filter">
-          <button data-value="all" class="seg-btn active">Totes</button>
-          <button data-value="pending" class="seg-btn">Pendents</button>
-          <button data-value="kept" class="seg-btn">Guardades</button>
-          <button data-value="discarded" class="seg-btn">Descartades</button>
-        </div>
-      </div>
-      <div class="filter-row">
-        <span class="filter-label">Etiquetes</span>
-        <div class="chip-cloud" id="tag-cloud"><span class="hint">Encara no hi ha etiquetes.</span></div>
-      </div>
+      <div class="tag-groups" id="tag-cloud"></div>
     </div>
   </details>
 
@@ -498,6 +494,16 @@ function allTagsUsed() {
   return Array.from(set).sort((a, b) => a.localeCompare(b, 'ca'));
 }
 
+/* Taxonomia d'etiquetes, organitzada per grups perquè el núvol de filtres
+   sigui llegible. Qualsevol etiqueta ja usada que no encaixi en cap grup
+   predefinit es mostra igualment dins «Altres». */
+const TAG_GROUPS = [
+  { label: 'Tema',  tags: ['numeric', 'algebraic', 'espacial', 'mesura', 'estocastic'] },
+  { label: 'Tipus', tags: ['explainer', 'practice', 'puzzle', 'exam-style'] },
+  { label: 'Altres', tags: ['other'] },
+  { label: 'Curs',  tags: ['y7', 'y8', 'y9', 'y10', 'y11', 'y12', 'y13'] },
+];
+
 /* ─── Render: contador ─────────────────────────────────────────── */
 function updateCounter(filteredLen) {
   $('count').textContent = `${filteredLen} de ${state.images.length} imatges`;
@@ -506,14 +512,22 @@ function updateCounter(filteredLen) {
 /* ─── Render: núvol d'etiquetes ────────────────────────────────── */
 function renderTagCloud() {
   const cloud = $('tag-cloud');
-  const tags = allTagsUsed();
-  if (!tags.length) {
-    cloud.innerHTML = '<span class="hint">Encara no hi ha etiquetes. Afegeix-ne una des del detall d\'una imatge.</span>';
-    return;
-  }
-  cloud.innerHTML = tags.map(t => `
+  const used = allTagsUsed();
+  const predefined = new Set(TAG_GROUPS.flatMap(g => g.tags));
+  const extra = used.filter(t => !predefined.has(t));
+
+  const tagBtn = t => `
     <button class="tag-btn${state.filters.tags.has(t) ? ' active' : ''}" data-tag="${escHtml(t)}">${escHtml(t)}</button>
-  `).join('');
+  `;
+
+  cloud.innerHTML = TAG_GROUPS.map(g => {
+    const tags = g.label === 'Altres' ? g.tags.concat(extra) : g.tags;
+    return `
+    <div class="tag-group">
+      <span class="tag-group-label">${escHtml(g.label)}</span>
+      <div class="chip-cloud">${tags.map(tagBtn).join('')}</div>
+    </div>`;
+  }).join('');
 }
 
 /* ─── Render: graella ──────────────────────────────────────────── */
@@ -756,14 +770,6 @@ function bindEvents() {
     render();
   });
 
-  $('status-filter').addEventListener('click', e => {
-    const btn = e.target.closest('.seg-btn');
-    if (!btn) return;
-    state.filters.status = btn.dataset.value;
-    $('status-filter').querySelectorAll('.seg-btn').forEach(b => b.classList.toggle('active', b === btn));
-    render();
-  });
-
   $('tag-cloud').addEventListener('click', e => {
     const btn = e.target.closest('.tag-btn');
     if (!btn) return;
@@ -788,7 +794,6 @@ function bindEvents() {
   $('btn-reset-filters').addEventListener('click', () => {
     state.filters = { query: '', status: 'all', tags: new Set(), sort: state.filters.sort };
     $('search').value = '';
-    $('status-filter').querySelectorAll('.seg-btn').forEach(b => b.classList.toggle('active', b.dataset.value === 'all'));
     render();
   });
 
