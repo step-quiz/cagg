@@ -636,7 +636,6 @@ function renderDetail() {
   const file = state.detail.list[state.detail.pos];
   const im = state.images.find(x => x.file === file);
   if (!im) return;
-  const m = getMeta(file);
 
   $('ov-img').src = 'media/' + encodeURIComponent(file);
   $('ov-img').alt = im.alt || '';
@@ -654,57 +653,7 @@ function renderDetail() {
       </div>
       ${im.urlWeb ? `<div class="ov-link" style="margin-top:6px"><a href="${escHtml(im.urlWeb)}" target="_blank" rel="noopener">Veure l'original a Bluesky ↗</a></div>` : ''}
     </div>
-    <div class="ov-section">
-      <div class="ov-label">Estat</div>
-      <div class="seg" id="detail-status">
-        <button data-value="pending" class="seg-btn${m.status === 'pending' ? ' active' : ''}">Pendent</button>
-        <button data-value="kept" class="seg-btn${m.status === 'kept' ? ' active' : ''}">Guardada</button>
-        <button data-value="discarded" class="seg-btn${m.status === 'discarded' ? ' active' : ''}">Descartada</button>
-      </div>
-      <div class="ov-select-row" style="margin-top:10px">
-        <label><input type="checkbox" id="detail-selected" ${m.selected ? 'checked' : ''}> Inclou-la a la selecció</label>
-      </div>
-    </div>
-    <div class="ov-section">
-      <div class="ov-label">Etiquetes</div>
-      <div class="ov-tags" id="detail-tags">
-        ${m.tags.map(t => `<span class="chip removable" data-tag="${escHtml(t)}">${escHtml(t)}<button data-role="remove-tag" aria-label="Elimina l'etiqueta">×</button></span>`).join('')}
-      </div>
-      <input type="text" class="ov-tag-input" id="detail-tag-input" placeholder="Afegeix una etiqueta i prem Retorn">
-    </div>
-    <div class="ov-section">
-      <div class="ov-label">Nota</div>
-      <textarea class="ov-note" id="detail-note" placeholder="Comentari propi…">${escHtml(m.note)}</textarea>
-    </div>
   `;
-
-  $('detail-status').addEventListener('click', e => {
-    const btn = e.target.closest('.seg-btn');
-    if (!btn) return;
-    mutateMeta(file, mm => { mm.status = btn.dataset.value; });
-  });
-  $('detail-selected').addEventListener('change', e => {
-    mutateMeta(file, mm => { mm.selected = e.target.checked; });
-  });
-  $('detail-tags').addEventListener('click', e => {
-    const btn = e.target.closest('[data-role="remove-tag"]');
-    if (!btn) return;
-    const tag = btn.parentElement.dataset.tag;
-    mutateMeta(file, mm => { mm.tags = mm.tags.filter(t => t !== tag); });
-  });
-  $('detail-tag-input').addEventListener('keydown', e => {
-    if (e.key !== 'Enter') return;
-    const val = e.target.value.trim();
-    e.target.value = '';
-    if (!val) return;
-    mutateMeta(file, mm => {
-      if (!mm.tags.some(t => normalize(t) === normalize(val))) mm.tags.push(val);
-    });
-  });
-  $('detail-note').addEventListener('input', e => {
-    getMeta(file).note = e.target.value;
-    saveMetaDebounced();
-  });
 }
 
 /* ─── Exportació / importació ──────────────────────────────────── */
