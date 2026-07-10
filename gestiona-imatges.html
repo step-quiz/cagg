@@ -288,8 +288,6 @@
     <option value="likes-desc">Més m'agrada</option>
     <option value="likes-asc">Menys m'agrada</option>
   </select>
-  <button class="btn btn-ghost" id="btn-import">Importa catàleg</button>
-  <input type="file" id="import-input" accept="application/json,.json" hidden>
   <button class="btn btn-prim" id="btn-download">Baixa catàleg</button>
 </header>
 
@@ -691,32 +689,35 @@ function downloadCatalog() {
   toast('Catàleg descarregat');
 }
 
-function importCatalog(file) {
-  const reader = new FileReader();
-  reader.onload = () => {
-    let count = 0;
-    try {
-      const data = JSON.parse(reader.result);
-      const list = Array.isArray(data) ? data : data.imatges;
-      if (!Array.isArray(list)) throw new Error('format');
-      for (const row of list) {
-        if (!row || !row.file) continue;
-        state.meta[row.file] = {
-          tags: Array.isArray(row.tags) ? row.tags : [],
-          note: typeof row.note === 'string' ? row.note : '',
-          status: ['pending', 'kept', 'discarded'].includes(row.status) ? row.status : 'pending',
-          selected: !!row.selected,
-        };
-        count++;
-      }
-      saveMeta();
-      render();
-      toast(`Catàleg importat (${count} imatges)`);
-    } catch (e) {
-      toast('El fitxer no és un catàleg vàlid');
-    }
-  };
-  reader.readAsText(file);
+function applyCatalog(data) {
+  const list = Array.isArray(data) ? data : data.imatges;
+  if (!Array.isArray(list)) throw new Error('format');
+  let count = 0;
+  for (const row of list) {
+    if (!row || !row.file) continue;
+    state.meta[row.file] = {
+      tags: Array.isArray(row.tags) ? row.tags : [],
+      note: typeof row.note === 'string' ? row.note : '',
+      status: ['pending', 'kept', 'discarded'].includes(row.status) ? row.status : 'pending',
+      selected: !!row.selected,
+    };
+    count++;
+  }
+  return count;
+}
+
+async function loadCatalogFromRepo() {
+  try {
+    const resp = await fetch('cataleg-etiquetes.json');
+    if (!resp.ok) return; // no hi ha catàleg publicat encara: no és un error
+    const data = await resp.json();
+    const count = applyCatalog(data);
+    saveMeta();
+    toast(`Catàleg carregat (${count} imatges)`);
+  } catch (e) {
+    // Si el fitxer no existeix o no és vàlid, l'eina continua funcionant
+    // amb el que ja hi hagi a localStorage.
+  }
 }
 
 async function downloadSelectionZip() {
@@ -803,12 +804,6 @@ function bindEvents() {
   });
 
   $('btn-download').addEventListener('click', downloadCatalog);
-  $('btn-import').addEventListener('click', () => $('import-input').click());
-  $('import-input').addEventListener('change', e => {
-    const file = e.target.files[0];
-    if (file) importCatalog(file);
-    e.target.value = '';
-  });
 
   $('bulk-tag-apply').addEventListener('click', () => {
     const val = $('bulk-tag-input').value.trim();
@@ -861,6 +856,7 @@ async function init() {
     return;
   }
   loadMetaFromStorage();
+  await loadCatalogFromRepo();
   bindEvents();
   render();
   $('app').hidden = false;
