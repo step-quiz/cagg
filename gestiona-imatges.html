@@ -464,6 +464,23 @@ function loadMetaFromStorage() {
   } catch (e) { state.meta = {}; }
 }
 
+/* Taxonomia d'etiquetes, organitzada per grups perquè el núvol de filtres
+   sigui llegible. Qualsevol etiqueta ja usada que no encaixi en cap grup
+   predefinit es mostra igualment dins «Altres». */
+const TAG_GROUPS = [
+  { label: 'Tema',  tags: ['numeric', 'algebraic', 'espacial', 'mesura', 'estocastic'] },
+  { label: 'Tipus', tags: ['explainer', 'practice', 'puzzle', 'exam-style'] },
+  { label: 'Altres', tags: ['other'] },
+  { label: 'Curs',  tags: ['y7', 'y8', 'y9', 'y10', 'y11', 'y12', 'y13'] },
+];
+
+/* A quin grup pertany una etiqueta (qualsevol etiqueta fora de la
+   taxonomia predefinida es tracta com si fos d'«Altres»). */
+function tagGroupKey(tag) {
+  const g = TAG_GROUPS.find(g => g.tags.includes(tag));
+  return g ? g.label : 'Altres';
+}
+
 /* ─── Filtrat i ordenació ──────────────────────────────────────── */
 function getFiltered() {
   let list = state.images;
@@ -475,7 +492,19 @@ function getFiltered() {
     list = list.filter(im => getMeta(im.file).status === state.filters.status);
   }
   if (state.filters.tags.size) {
-    list = list.filter(im => getMeta(im.file).tags.some(t => state.filters.tags.has(t)));
+    // Les etiquetes seleccionades dins una mateixa categoria (p.ex. dos
+    // cursos) es combinen amb OR; entre categories diferents (p.ex. Tema
+    // i Curs) es combinen amb AND, perquè el filtre vagi restringint.
+    const selectedByGroup = {};
+    state.filters.tags.forEach(t => {
+      const key = tagGroupKey(t);
+      (selectedByGroup[key] || (selectedByGroup[key] = [])).push(t);
+    });
+    const groupFilters = Object.values(selectedByGroup);
+    list = list.filter(im => {
+      const tags = getMeta(im.file).tags;
+      return groupFilters.every(groupTags => groupTags.some(t => tags.includes(t)));
+    });
   }
   list = list.slice().sort((a, b) => {
     switch (state.filters.sort) {
@@ -493,16 +522,6 @@ function allTagsUsed() {
   Object.values(state.meta).forEach(m => (m.tags || []).forEach(t => set.add(t)));
   return Array.from(set).sort((a, b) => a.localeCompare(b, 'ca'));
 }
-
-/* Taxonomia d'etiquetes, organitzada per grups perquè el núvol de filtres
-   sigui llegible. Qualsevol etiqueta ja usada que no encaixi en cap grup
-   predefinit es mostra igualment dins «Altres». */
-const TAG_GROUPS = [
-  { label: 'Tema',  tags: ['numeric', 'algebraic', 'espacial', 'mesura', 'estocastic'] },
-  { label: 'Tipus', tags: ['explainer', 'practice', 'puzzle', 'exam-style'] },
-  { label: 'Altres', tags: ['other'] },
-  { label: 'Curs',  tags: ['y7', 'y8', 'y9', 'y10', 'y11', 'y12', 'y13'] },
-];
 
 /* ─── Render: contador ─────────────────────────────────────────── */
 function updateCounter(filteredLen) {
