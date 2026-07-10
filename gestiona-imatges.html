@@ -143,7 +143,7 @@
     padding: 4px 11px; border-radius: 980px; font-size: 11.5px; font-weight: 600;
     background: var(--surface-3); color: var(--text-2); border: 1px solid transparent;
   }
-  .tag-btn:hover { background: var(--divider); }
+  .tag-btn:hover { background: darkgrey; border-color: #000; }
   .tag-btn.active { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
 
   /* ── Bulk bar ───────────────────────────────────────────────────── */
@@ -465,20 +465,34 @@ function loadMetaFromStorage() {
 }
 
 /* Taxonomia d'etiquetes, organitzada per grups perquè el núvol de filtres
-   sigui llegible. Qualsevol etiqueta ja usada que no encaixi en cap grup
-   predefinit es mostra igualment dins «Altres». */
+   sigui llegible. La clau (key) s'usa només per combinar el filtre AND/OR
+   entre grups; l'etiqueta (label) és el text visible i pot ser buida per
+   no mostrar cap títol de fila. */
 const TAG_GROUPS = [
-  { label: 'Tema',  tags: ['numeric', 'algebraic', 'espacial', 'mesura', 'estocastic'] },
-  { label: 'Tipus', tags: ['explainer', 'practice', 'puzzle', 'exam-style'] },
-  { label: 'Altres', tags: ['other'] },
-  { label: 'Curs',  tags: ['y7', 'y8', 'y9', 'y10', 'y11', 'y12', 'y13'] },
+  { key: 'tema',  label: null,   tags: ['numeric', 'algebraic', 'espacial', 'mesura', 'estocastic'] },
+  { key: 'tipus', label: null,   tags: ['explainer', 'practice', 'puzzle', 'exam-style', 'other'] },
+  { key: 'curs',  label: 'Curs', tags: ['y7', 'y8', 'y9', 'y10', 'y11', 'y12', 'y13'] },
 ];
 
+/* Text visible de cada etiqueta al núvol de filtres. */
+const TAG_DISPLAY = {
+  numeric: 'Numèric',
+  algebraic: 'Algebraic',
+  espacial: 'Espacial',
+  mesura: 'Mesura',
+  estocastic: 'Estocàstic',
+  explainer: 'Teoria',
+  practice: 'Pràctica',
+  puzzle: 'Puzzle',
+  'exam-style': 'Examen',
+  other: 'Altres',
+};
+
 /* A quin grup pertany una etiqueta (qualsevol etiqueta fora de la
-   taxonomia predefinida es tracta com si fos d'«Altres»). */
+   taxonomia predefinida es tracta com un grup propi). */
 function tagGroupKey(tag) {
   const g = TAG_GROUPS.find(g => g.tags.includes(tag));
-  return g ? g.label : 'Altres';
+  return g ? g.key : 'altres';
 }
 
 /* ─── Filtrat i ordenació ──────────────────────────────────────── */
@@ -493,8 +507,8 @@ function getFiltered() {
   }
   if (state.filters.tags.size) {
     // Les etiquetes seleccionades dins una mateixa categoria (p.ex. dos
-    // cursos) es combinen amb OR; entre categories diferents (p.ex. Tema
-    // i Curs) es combinen amb AND, perquè el filtre vagi restringint.
+    // cursos) es combinen amb OR; entre categories diferents (p.ex. tipus
+    // i curs) es combinen amb AND, perquè el filtre vagi restringint.
     const selectedByGroup = {};
     state.filters.tags.forEach(t => {
       const key = tagGroupKey(t);
@@ -517,12 +531,6 @@ function getFiltered() {
   return list;
 }
 
-function allTagsUsed() {
-  const set = new Set();
-  Object.values(state.meta).forEach(m => (m.tags || []).forEach(t => set.add(t)));
-  return Array.from(set).sort((a, b) => a.localeCompare(b, 'ca'));
-}
-
 /* ─── Render: contador ─────────────────────────────────────────── */
 function updateCounter(filteredLen) {
   $('count').textContent = `${filteredLen} de ${state.images.length} imatges`;
@@ -531,22 +539,16 @@ function updateCounter(filteredLen) {
 /* ─── Render: núvol d'etiquetes ────────────────────────────────── */
 function renderTagCloud() {
   const cloud = $('tag-cloud');
-  const used = allTagsUsed();
-  const predefined = new Set(TAG_GROUPS.flatMap(g => g.tags));
-  const extra = used.filter(t => !predefined.has(t));
 
   const tagBtn = t => `
-    <button class="tag-btn${state.filters.tags.has(t) ? ' active' : ''}" data-tag="${escHtml(t)}">${escHtml(t)}</button>
+    <button class="tag-btn${state.filters.tags.has(t) ? ' active' : ''}" data-tag="${escHtml(t)}">${escHtml(TAG_DISPLAY[t] || t)}</button>
   `;
 
-  cloud.innerHTML = TAG_GROUPS.map(g => {
-    const tags = g.label === 'Altres' ? g.tags.concat(extra) : g.tags;
-    return `
+  cloud.innerHTML = TAG_GROUPS.map(g => `
     <div class="tag-group">
-      <span class="tag-group-label">${escHtml(g.label)}</span>
-      <div class="chip-cloud">${tags.map(tagBtn).join('')}</div>
-    </div>`;
-  }).join('');
+      ${g.label ? `<span class="tag-group-label">${escHtml(g.label)}</span>` : ''}
+      <div class="chip-cloud">${g.tags.map(tagBtn).join('')}</div>
+    </div>`).join('');
 }
 
 /* ─── Render: graella ──────────────────────────────────────────── */
