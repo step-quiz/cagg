@@ -105,3 +105,12 @@ Cada imatge es guarda, dins `localStorage`, amb aquesta forma:
   sense haver fet *Baixa catàleg* abans, es perd la feina d'etiquetatge.
 - No hi ha sincronització entre dispositius ni usuaris; és una eina d'un sol
   usuari, pensada per treballar-hi localment.
+
+<!-- atribucio-centre:inici -->
+
+---
+
+Material desenvolupat per **David Arso Civil** per al Departament de Matemàtiques de l'INS Miquel Tarradell.
+Contingut sota CC BY-NC-SA 4.0, codi sota llicència MIT. Vegeu [`LLICENCIA.md`](LLICENCIA.md).
+
+<!-- atribucio-centre:final -->
